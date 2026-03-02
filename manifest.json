@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "FB Ad Library — Creative Highlighter",
+  "version": "1.0",
+  "description": "Colors the 'X ads' text red on Facebook Ad Library when multiple ads share the same creative.",
+  "icons": {
+    "128": "icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.facebook.com/ads/library/*",
+        "https://web.facebook.com/ads/library/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "permissions": []
+}
