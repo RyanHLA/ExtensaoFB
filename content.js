@@ -43,16 +43,66 @@ const TEXT_NODE_PATTERN = /(\d+\s+anúncios?|\d+\s+ads?)/i;
 
 const STYLE = 'color:#e00 !important; font-weight:700 !important;';
 const DONE_ATTR = 'data-fbhl';
+const CARD_ATTR = 'data-fbhl-card';
+const CARD_BORDER_STYLE = '2px solid #e00 !important';
+const CARD_BG_STYLE = 'rgba(220,0,0,0.04) !important';
 
 // ── Core logic ────────────────────────────────────────────────────────────────
 
 /**
+ * Walk up the DOM from `el` to find the outermost card-like ancestor.
+ * We keep climbing and track the last valid candidate, so we get the FULL
+ * card container rather than stopping at the first inner section.
+ *
+ * A valid candidate is a block-level element (div/article/li/section) that is:
+ *   - at least 200px wide and 100px tall (real container, not a tiny wrapper)
+ *   - no wider than 90% of the viewport (to avoid selecting the page shell)
+ *
+ * We stop after 30 levels or when we hit document.body.
+ */
+function findCardAncestor(el) {
+  const maxWidth = window.innerWidth * 0.90;
+  let node = el.parentElement;
+  let depth = 0;
+  let best = null;
+
+  while (node && node !== document.body && depth < 30) {
+    const tag = node.tagName;
+    if (tag === 'DIV' || tag === 'ARTICLE' || tag === 'LI' || tag === 'SECTION') {
+      const rect = node.getBoundingClientRect();
+      if (rect.width >= 200 && rect.height >= 100 && rect.width <= maxWidth) {
+        best = node; // keep climbing — we want the outermost valid ancestor
+      }
+    }
+    node = node.parentElement;
+    depth++;
+  }
+  return best;
+}
+
+/**
+ * Apply a red border + faint red background tint to the ad card element.
+ */
+function applyCardBorder(cardEl) {
+  if (!cardEl || cardEl.hasAttribute(CARD_ATTR)) return;
+  cardEl.setAttribute(CARD_ATTR, '1');
+  cardEl.style.setProperty('outline', CARD_BORDER_STYLE.replace(' !important', ''), 'important');
+  cardEl.style.setProperty('background-color', CARD_BG_STYLE.replace(' !important', ''), 'important');
+  cardEl.style.setProperty('border-radius', '8px', 'important');
+}
+
+/**
  * Given an element whose full textContent matches one of CONTAINER_PATTERNS,
- * apply red styling to the "X anúncios / X ads" part.
+ * apply red styling to the "X anúncios / X ads" part,
+ * and apply a red border to the enclosing ad card.
  */
 function applyHighlight(el) {
   if (el.hasAttribute(DONE_ATTR)) return;
   el.setAttribute(DONE_ATTR, '1');
+
+  // Always try to border the card, regardless of text highlight strategy
+  const card = findCardAncestor(el);
+  applyCardBorder(card);
 
   // Strategy 1: find a <strong> child with content like "5 anúncios"
   const strongs = el.querySelectorAll('strong, b');
